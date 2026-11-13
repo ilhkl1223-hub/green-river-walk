@@ -176,7 +176,7 @@
     try {
       if (typeof L !== "undefined") {
         map = L.map("map", { zoomControl: false }).setView([24.1395, 120.6825], 16);
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap &copy; CARTO", maxZoom: 19 }).addTo(map);
+        L.tileLayer("https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}", { attribution: "&copy; \u5167\u653f\u90e8\u570b\u571f\u6e2c\u7e6a\u4e2d\u5fc3", maxZoom: 19 }).addTo(map);
         L.polyline(stations.map(s => [s.lat, s.lng]), { color: "#2d8a68", weight: 4, opacity: 0.55, dashArray: "8, 10" }).addTo(map);
         stations.forEach((st, idx) => {
           const circle = L.circle([st.lat, st.lng], { radius: TRIGGER_RADIUS_METERS, color: "#2d8a68", weight: 2, fillColor: "#34d399", fillOpacity: 0.18 }).addTo(map);
