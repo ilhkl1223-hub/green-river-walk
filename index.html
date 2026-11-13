@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>&#21488;&#20013;&#33290;&#22478;&#23450;&#40670;&#23566;&#35712;&#65372;LBS &#23526;&#22659;&#36208;&#35712;&#36938;&#25138;</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     :root {
       --primary: #2d8a68;
@@ -17,8 +17,8 @@
       --text-muted: #6b7280;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    body, html { width: 100%; height: 100%; font-family: sans-serif; overflow: hidden; background: #e5ece9; color: var(--text-main); }
-    #map { width: 100%; height: 100%; z-index: 1; }
+    body, html { width: 100%; height: 100%; font-family: sans-serif; overflow: hidden; background: #dce7e2; color: var(--text-main); }
+    #map { width: 100%; height: 100%; z-index: 1; background: #dce7e2; }
     .top-hud { position: fixed; top: 12px; left: 12px; right: 12px; z-index: 1000; background: var(--bg-card); border-radius: 18px; padding: 12px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
     .hud-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .game-title { font-size: 15px; font-weight: 800; color: var(--primary); }
@@ -161,7 +161,7 @@
           bgmBtn.classList.add("playing");
           bgmBtn.textContent = "\ud83c\udfb5 \u4e3b\u984c\u66f2\uff1a\u64ad\u653e\u4e2d";
         }).catch(() => {
-          alert("\u8acb\u78ba\u8a8d\u540c\u8cc7\u6599\u593e\u5167\u5df2\u653e\u5165 bgm.mp3 \u97f3\u6a02\u6a94\u5594\uff01");
+          alert("\u8acb\u518d\u9ede\u4e00\u4e0b\u64ad\u653e\u97f3\u6a02\uff0c\u6216\u78ba\u8a8d\u7db2\u8def\u9023\u7dda\u6b63\u5e38\u5594\uff01");
         });
       } else {
         userWantsBGM = false;
@@ -171,18 +171,23 @@
       }
     }
 
-    const map = L.map("map", { zoomControl: false }).setView([24.1395, 120.6825], 16);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap", maxZoom: 19 }).addTo(map);
-    L.polyline(stations.map(s => [s.lat, s.lng]), { color: "#2d8a68", weight: 4, opacity: 0.55, dashArray: "8, 10" }).addTo(map);
-    let playerMarker = null, playerAccuracyCircle = null;
+    let map = null, playerMarker = null, playerAccuracyCircle = null;
     const stationCircles = [];
-    stations.forEach((st, idx) => {
-      const circle = L.circle([st.lat, st.lng], { radius: TRIGGER_RADIUS_METERS, color: "#2d8a68", weight: 2, fillColor: "#34d399", fillOpacity: 0.18 }).addTo(map);
-      stationCircles.push(circle);
-      const icon = L.divIcon({ className: "", html: `<div class="poi-pin" id="pin-${st.id}">${st.id}</div>`, iconSize: [34, 34], iconAnchor: [17, 17] });
-      const marker = L.marker([st.lat, st.lng], { icon }).addTo(map);
-      marker.on("click", () => { selectedIndex = idx; updateUI(); map.panTo([st.lat, st.lng]); });
-    });
+    try {
+      if (typeof L !== "undefined") {
+        map = L.map("map", { zoomControl: false }).setView([24.1395, 120.6825], 16);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap &copy; CARTO", maxZoom: 19 }).addTo(map);
+        L.polyline(stations.map(s => [s.lat, s.lng]), { color: "#2d8a68", weight: 4, opacity: 0.55, dashArray: "8, 10" }).addTo(map);
+        stations.forEach((st, idx) => {
+          const circle = L.circle([st.lat, st.lng], { radius: TRIGGER_RADIUS_METERS, color: "#2d8a68", weight: 2, fillColor: "#34d399", fillOpacity: 0.18 }).addTo(map);
+          stationCircles.push(circle);
+          const icon = L.divIcon({ className: "", html: `<div class="poi-pin" id="pin-${st.id}">${st.id}</div>`, iconSize: [34, 34], iconAnchor: [17, 17] });
+          const marker = L.marker([st.lat, st.lng], { icon }).addTo(map);
+          marker.on("click", () => { selectedIndex = idx; updateUI(); if (map) map.panTo([st.lat, st.lng]); });
+        });
+      }
+    } catch (e) { console.log("Map fallback", e); }
+
     function startGPSTracking() {
       if (!("geolocation" in navigator)) { document.getElementById("gpsText").textContent = "\u4e0d\u652f\u63f4 GPS"; return; }
       navigator.geolocation.watchPosition((pos) => {
@@ -190,17 +195,19 @@
         const acc = Math.round(pos.coords.accuracy);
         document.getElementById("gpsBadge").classList.add("active");
         document.getElementById("gpsText").textContent = `GPS \u5df2\u9023\u7dda (\u00b1${acc}m)`;
-        if (!playerMarker) {
-          const pIcon = L.divIcon({ className: "", html: `<div class="player-marker"></div>`, iconSize: [22, 22], iconAnchor: [11, 11] });
-          playerMarker = L.marker([userLat, userLng], { icon: pIcon, zIndexOffset: 999 }).addTo(map);
-          playerAccuracyCircle = L.circle([userLat, userLng], { radius: acc, color: "#3b82f6", weight: 1, fillColor: "#3b82f6", fillOpacity: 0.1 }).addTo(map);
-        } else {
-          playerMarker.setLatLng([userLat, userLng]);
-          playerAccuracyCircle.setLatLng([userLat, userLng]);
-          playerAccuracyCircle.setRadius(acc);
+        if (map && typeof L !== "undefined") {
+          if (!playerMarker) {
+            const pIcon = L.divIcon({ className: "", html: `<div class="player-marker"></div>`, iconSize: [22, 22], iconAnchor: [11, 11] });
+            playerMarker = L.marker([userLat, userLng], { icon: pIcon, zIndexOffset: 999 }).addTo(map);
+            playerAccuracyCircle = L.circle([userLat, userLng], { radius: acc, color: "#3b82f6", weight: 1, fillColor: "#3b82f6", fillOpacity: 0.1 }).addTo(map);
+          } else {
+            playerMarker.setLatLng([userLat, userLng]);
+            playerAccuracyCircle.setLatLng([userLat, userLng]);
+            playerAccuracyCircle.setRadius(acc);
+          }
         }
         autoTriggerInRange(); updateUI();
-        if (!firstFixDone) {
+        if (!firstFixDone && map) {
           firstFixDone = true;
           if (getDistanceMeters(userLat, userLng, 24.1395, 120.6825) < 3000) map.setView([userLat, userLng], 17);
         }
@@ -233,7 +240,7 @@
         const inRange = (userLat !== null ? getDistanceMeters(userLat, userLng, st.lat, st.lng) : Infinity) <= TRIGGER_RADIUS_METERS;
         const pinEl = document.getElementById(`pin-${st.id}`);
         if (pinEl) { pinEl.className = "poi-pin" + (done ? " done" : inRange ? " in-range" : ""); pinEl.textContent = done ? "\u2713" : st.id; }
-        stationCircles[idx].setStyle(done ? { color: "#10b981", fillColor: "#10b981", fillOpacity: 0.2 } : inRange ? { color: "#ff477e", fillColor: "#ff6b8b", fillOpacity: 0.35 } : { color: "#2d8a68", fillColor: "#34d399", fillOpacity: 0.18 });
+        if (stationCircles[idx]) stationCircles[idx].setStyle(done ? { color: "#10b981", fillColor: "#10b981", fillOpacity: 0.2 } : inRange ? { color: "#ff477e", fillColor: "#ff6b8b", fillOpacity: 0.35 } : { color: "#2d8a68", fillColor: "#34d399", fillOpacity: 0.18 });
       });
       const current = stations[selectedIndex], isDone = collectedIds.includes(current.id);
       document.getElementById("stationTag").textContent = `\u5b9a\u9ede #${current.id} / ${stations.length}` + (isDone ? "\uff08\u5df2\u96c6\u7ae0\uff09" : "");
@@ -253,4 +260,50 @@
         distTag.textContent = `\u2728 \u5df2\u9032\u5165\u5149\u5708\u7bc4\u570d`; distTag.classList.add("in-range");
         playBtn.className = "action-btn unlocked"; playBtn.textContent = "\ud83c\udfac \u6309\u4e0b\u64ad\u653e 10 \u79d2\u52d5\u614b\u5c0e\u8b80";
       } else {
-        distTag.textContent = `\u8ddd\u96e2\u76ee\u6a19\u7d04 ${dist} \u516c\u5c3a`; distTa
+        distTag.textContent = `\u8ddd\u96e2\u76ee\u6a19\u7d04 ${dist} \u516c\u5c3a`; distTag.classList.remove("in-range");
+        playBtn.className = isDone ? "action-btn unlocked" : "action-btn locked";
+        playBtn.textContent = isDone ? "\u25b6\ufe0f \u91cd\u6eab 10 \u79d2\u52d5\u614b\u5c0e\u8b80" : `\ud83d\udd12 \u9084\u5dee\u7d04 ${Math.max(5, dist - TRIGGER_RADIUS_METERS)} \u516c\u5c3a\u9032\u5165\u5149\u5708`;
+      }
+    }
+    function switchStation(delta) { selectedIndex = (selectedIndex + delta + stations.length) % stations.length; if (map) map.panTo([stations[selectedIndex].lat, stations[selectedIndex].lng]); updateUI(); }
+    function centerOnPlayer() { if (userLat !== null && map) map.setView([userLat, userLng], 17); else alert("\u5c1a\u672a\u53d6\u5f97\u60a8\u7684 GPS \u4f4d\u7f6e\uff0c\u8acb\u78ba\u8a8d\u624b\u6a5f\u5df2\u958b\u555f\u5b9a\u4f4d\u6b0a\u9650\u3002"); }
+    function fitAllStations() { if (map && typeof L !== "undefined") map.fitBounds(L.latLngBounds(stations.map(s => [s.lat, s.lng])), { padding: [70, 70] }); }
+    function demoUnlockCurrent() { openVideoModal(stations[selectedIndex]); }
+    function handlePlayClick() {
+      const current = stations[selectedIndex], isDone = collectedIds.includes(current.id);
+      if (userLat === null) { openPasscodeModal(); return; }
+      const dist = getDistanceMeters(userLat, userLng, current.lat, current.lng);
+      if (dist <= TRIGGER_RADIUS_METERS || isDone) openVideoModal(current);
+      else openPasscodeModal();
+    }
+    function openVideoModal(station) {
+      if (userWantsBGM && !bgmAudio.paused) bgmAudio.pause();
+      const isNewStamp = !collectedIds.includes(station.id);
+      if (isNewStamp) { collectedIds.push(station.id); localStorage.setItem("taichung_guide_stamps", JSON.stringify(collectedIds)); updateUI(); }
+      document.getElementById("modalTitle").textContent = `#${station.id} ${station.name}`;
+      document.getElementById("stampBanner").textContent = isNewStamp ? `\ud83c\udf89 \u606d\u559c\uff01\u5df2\u84cb\u4e0a\u300c#${station.id}\u300d\u7d00\u5ff5\u7ae0\uff08${collectedIds.length}/${stations.length}\uff09` : `\u2705 \u60a8\u5df2\u6536\u96c6\u6b64\u5b9a\u9ede\u7d00\u5ff5\u7ae0\uff08${collectedIds.length}/${stations.length}\uff09`;
+      document.getElementById("ytPlayer").src = `https://www.youtube.com/embed/${station.youtubeId}?autoplay=1&rel=0&playsinline=1`;
+      document.getElementById("videoModal").classList.add("show");
+    }
+    function closeVideoModal() {
+      document.getElementById("ytPlayer").src = "";
+      document.getElementById("videoModal").classList.remove("show");
+      if (userWantsBGM) bgmAudio.play().catch(() => {});
+      if (collectedIds.length === stations.length) setTimeout(() => document.getElementById("victoryModal").classList.add("show"), 350);
+    }
+    function openPasscodeModal() {
+      const current = stations[selectedIndex];
+      document.getElementById("passcodeHint").textContent = `\u8acb\u8f38\u5165\u5b9a\u9ede #${current.id}\u300c${current.name}\u300d\u73fe\u5834 3 \u4f4d\u6578\u5bc6\u78bc\uff08\u6e2c\u8a66\u78bc ${current.code}\uff09`;
+      document.getElementById("passcodeInput").value = "";
+      document.getElementById("passcodeModal").classList.add("show");
+    }
+    function closePasscodeModal() { document.getElementById("passcodeModal").classList.remove("show"); }
+    function verifyPasscode() {
+      const current = stations[selectedIndex];
+      if (document.getElementById("passcodeInput").value.trim() === current.code) { closePasscodeModal(); openVideoModal(current); }
+      else alert("\u5bc6\u78bc\u4e0d\u6b63\u78ba\u5594\uff01");
+    }
+    updateUI(); fitAllStations(); startGPSTracking();
+  </script>
+</body>
+</html>
